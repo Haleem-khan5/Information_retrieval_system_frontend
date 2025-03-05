@@ -1,9 +1,7 @@
-// file: client/src/components/SearchPage.jsx
-
 import React, { useState } from "react";
 import axios from "axios";
 import "./SearchPage.css";
-import { renderDynamicTable } from "./renderDynamicTable"; // import the helper function
+import { renderDynamicTable } from "./renderDynamicTable";
 
 // Read the base API URL from environment variables
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
@@ -25,6 +23,9 @@ export default function SearchPage() {
   const [singleResult, setSingleResult] = useState(null); // for single object
   const [resultsTitle, setResultsTitle] = useState("");
 
+  // State for error messages (real-time error handling)
+  const [errorMessage, setErrorMessage] = useState("");
+
   // Optional placeholders for dimension inputs
   const dimensionPlaceholders = {
     length: { min: "e.g., 20", max: "e.g., 30" },
@@ -36,109 +37,110 @@ export default function SearchPage() {
   };
 
   const handleSearch = async () => {
-    if (!componentType) {
-      alert("Please enter a component type.");
+    // Validate common fields
+    if (!componentType.trim()) {
+      setErrorMessage("Please enter a component type.");
       return;
     }
     if (!searchType) {
-      alert("Please select a search type.");
+      setErrorMessage("Please select a search type.");
       return;
     }
-    // Clear old data
+    // Validate search-type specific fields
+    switch (searchType) {
+      case "dimensionRange":
+        if (!selectedDimension || !minDim || !maxDim) {
+          setErrorMessage("Please select a dimension and fill in min and max values.");
+          return;
+        }
+        break;
+      case "material":
+        if (!materialType.trim()) {
+          setErrorMessage("Please enter a material type.");
+          return;
+        }
+        break;
+      case "completeMetadata":
+        if (!cmBaseComponent.trim()) {
+          setErrorMessage("Please enter a base component.");
+          return;
+        }
+        break;
+      case "relatedComponents":
+        if (!relBaseComponent.trim()) {
+          setErrorMessage("Please enter a base component.");
+          return;
+        }
+        break;
+      case "notes":
+        if (!notesKeyword.trim()) {
+          setErrorMessage("Please enter a keyword.");
+          return;
+        }
+        break;
+      case "drawingDetails":
+        if (!drawingAuthor.trim()) {
+          setErrorMessage("Please enter a drawing author.");
+          return;
+        }
+        break;
+      default:
+        setErrorMessage("Unknown search type!");
+        return;
+    }
+
+    // Clear previous error and results
+    setErrorMessage("");
     setResults([]);
     setSingleResult(null);
     setResultsTitle("");
 
     try {
+      let res;
       // Build the endpoint based on which search type the user selected
-      switch (searchType) {
-        case "dimensionRange": {
-          if (!selectedDimension || !minDim || !maxDim) {
-            alert("Please select a dimension and fill in min and max values.");
-            return;
-          }
-          const params = {
-            component_type: componentType,
-            dimension: selectedDimension,
-            minDim,
-            maxDim,
-          };
-          const res = await axios.get(`${API_BASE_URL}/search/byDimension`, { params });
-          setResults(res.data.results || []);
-          setResultsTitle("Dimension Range Search Results");
-          break;
-        }
-
-        case "material": {
-          if (!materialType) {
-            alert("Please enter a material type.");
-            return;
-          }
-          const params = { component_type: componentType, material_type: materialType };
-          const res = await axios.get(`${API_BASE_URL}/search/byMaterial`, { params });
-          setResults(res.data.results || []);
-          setResultsTitle("Material Search Results");
-          break;
-        }
-
-        case "completeMetadata": {
-          if (!cmBaseComponent) {
-            alert("Please enter a base component.");
-            return;
-          }
-          const params = { component_type: componentType, baseComponent: cmBaseComponent };
-          const res = await axios.get(`${API_BASE_URL}/search/completeMetadata`, { params });
-          setSingleResult(res.data); // single object
-          setResultsTitle("Complete Metadata Result");
-          break;
-        }
-
-        case "relatedComponents": {
-          if (!relBaseComponent) {
-            alert("Please enter a base component.");
-            return;
-          }
-          const params = { component_type: componentType, baseComponent: relBaseComponent };
-          const res = await axios.get(`${API_BASE_URL}/search/byComponentDetails`, { params });
-          setResults(res.data.results || []);
-          setResultsTitle("Related Components Search Results");
-          break;
-        }
-
-        case "notes": {
-          if (!notesKeyword) {
-            alert("Please enter a keyword.");
-            return;
-          }
-          const params = { component_type: componentType, keyword: notesKeyword };
-          const res = await axios.get(`${API_BASE_URL}/search/byNotes`, { params });
-          setResults(res.data.results || []);
-          setResultsTitle("Notes Search Results");
-          break;
-        }
-
-        case "drawingDetails": {
-          if (!drawingAuthor) {
-            alert("Please enter a drawing author.");
-            return;
-          }
-          const params = { component_type: componentType, author: drawingAuthor };
-          const res = await axios.get(`${API_BASE_URL}/search/byDrawingDetails`, { params });
-          setResults(res.data.results || []);
-          setResultsTitle("Drawing Details Search Results");
-          break;
-        }
-
-        default:
-          alert("Unknown search type!");
+      if (searchType === "dimensionRange") {
+        const params = {
+          component_type: componentType,
+          dimension: selectedDimension,
+          minDim,
+          maxDim,
+        };
+        res = await axios.get(`${API_BASE_URL}/search/byDimension`, { params });
+        setResults(res.data.results || []);
+        setResultsTitle("Dimension Range Search Results");
+      } else if (searchType === "material") {
+        const params = { component_type: componentType, material_type: materialType };
+        res = await axios.get(`${API_BASE_URL}/search/byMaterial`, { params });
+        setResults(res.data.results || []);
+        setResultsTitle("Material Search Results");
+      } else if (searchType === "completeMetadata") {
+        const params = { component_type: componentType, baseComponent: cmBaseComponent };
+        res = await axios.get(`${API_BASE_URL}/search/completeMetadata`, { params });
+        setSingleResult(res.data);
+        setResultsTitle("Complete Metadata Result");
+      } else if (searchType === "relatedComponents") {
+        const params = { component_type: componentType, baseComponent: relBaseComponent };
+        res = await axios.get(`${API_BASE_URL}/search/byComponentDetails`, { params });
+        setResults(res.data.results || []);
+        setResultsTitle("Related Components Search Results");
+      } else if (searchType === "notes") {
+        const params = { component_type: componentType, keyword: notesKeyword };
+        res = await axios.get(`${API_BASE_URL}/search/byNotes`, { params });
+        setResults(res.data.results || []);
+        setResultsTitle("Notes Search Results");
+      } else if (searchType === "drawingDetails") {
+        const params = { component_type: componentType, author: drawingAuthor };
+        res = await axios.get(`${API_BASE_URL}/search/byDrawingDetails`, { params });
+        setResults(res.data.results || []);
+        setResultsTitle("Drawing Details Search Results");
       }
     } catch (error) {
       console.error(error);
-      alert("Error occurred during search.");
+      setErrorMessage("Error occurred during search. Please try again later.");
     }
   };
 
-  // Render sub-fields depending on the search type
+  // Render sub-fields depending on the search type with real-time error clearing
   const renderSearchFields = () => {
     switch (searchType) {
       case "dimensionRange":
@@ -146,7 +148,10 @@ export default function SearchPage() {
           <>
             <select
               value={selectedDimension}
-              onChange={(e) => setSelectedDimension(e.target.value)}
+              onChange={(e) => {
+                setSelectedDimension(e.target.value);
+                setErrorMessage("");
+              }}
               className="select-field"
             >
               <option value="">Select Dimension</option>
@@ -166,7 +171,10 @@ export default function SearchPage() {
                   : "Min Dimension"
               }
               value={minDim}
-              onChange={(e) => setMinDim(e.target.value)}
+              onChange={(e) => {
+                setMinDim(e.target.value);
+                setErrorMessage("");
+              }}
               className="input-field"
               step="any"
             />
@@ -178,7 +186,10 @@ export default function SearchPage() {
                   : "Max Dimension"
               }
               value={maxDim}
-              onChange={(e) => setMaxDim(e.target.value)}
+              onChange={(e) => {
+                setMaxDim(e.target.value);
+                setErrorMessage("");
+              }}
               className="input-field"
               step="any"
             />
@@ -191,7 +202,10 @@ export default function SearchPage() {
             type="text"
             placeholder="Material Type (e.g., magnesium)"
             value={materialType}
-            onChange={(e) => setMaterialType(e.target.value)}
+            onChange={(e) => {
+              setMaterialType(e.target.value);
+              setErrorMessage("");
+            }}
             className="input-field"
           />
         );
@@ -202,7 +216,10 @@ export default function SearchPage() {
             type="text"
             placeholder="Base Component (e.g., AP11309)"
             value={cmBaseComponent}
-            onChange={(e) => setCmBaseComponent(e.target.value)}
+            onChange={(e) => {
+              setCmBaseComponent(e.target.value);
+              setErrorMessage("");
+            }}
             className="input-field"
           />
         );
@@ -213,7 +230,10 @@ export default function SearchPage() {
             type="text"
             placeholder="Base Component (e.g., AP6240)"
             value={relBaseComponent}
-            onChange={(e) => setRelBaseComponent(e.target.value)}
+            onChange={(e) => {
+              setRelBaseComponent(e.target.value);
+              setErrorMessage("");
+            }}
             className="input-field"
           />
         );
@@ -224,7 +244,10 @@ export default function SearchPage() {
             type="text"
             placeholder="Keyword (e.g., approval)"
             value={notesKeyword}
-            onChange={(e) => setNotesKeyword(e.target.value)}
+            onChange={(e) => {
+              setNotesKeyword(e.target.value);
+              setErrorMessage("");
+            }}
             className="input-field"
           />
         );
@@ -235,7 +258,10 @@ export default function SearchPage() {
             type="text"
             placeholder="Drawing Author (e.g., RHJS)"
             value={drawingAuthor}
-            onChange={(e) => setDrawingAuthor(e.target.value)}
+            onChange={(e) => {
+              setDrawingAuthor(e.target.value);
+              setErrorMessage("");
+            }}
             className="input-field"
           />
         );
@@ -261,7 +287,6 @@ export default function SearchPage() {
           // Array of results
           results.map((item, idx) => (
             <div key={idx} style={{ marginBottom: "1.5rem" }}>
-              {/* If "item" is an object with "metadata", "notes", "parts", etc. */}
               {renderDynamicTable(item)}
             </div>
           ))
@@ -280,19 +305,27 @@ export default function SearchPage() {
           Select a component type and a search type. Enter the relevant sub-fields, then click "Search."
         </p>
 
+        {errorMessage && <div className="error-message">{errorMessage}</div>}
+
         {/* Common Fields */}
         <div className="search-controls">
           <input
             type="text"
             placeholder="Component Type (e.g., anode)"
             value={componentType}
-            onChange={(e) => setComponentType(e.target.value)}
+            onChange={(e) => {
+              setComponentType(e.target.value);
+              setErrorMessage("");
+            }}
             className="input-field"
           />
 
           <select
             value={searchType}
-            onChange={(e) => setSearchType(e.target.value)}
+            onChange={(e) => {
+              setSearchType(e.target.value);
+              setErrorMessage("");
+            }}
             className="select-field"
           >
             <option value="">Select Search Type</option>

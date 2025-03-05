@@ -1,5 +1,3 @@
-// renderDynamicTable.jsx (or you can place this inside your SearchPage.jsx)
-
 import React from "react";
 
 /**
@@ -25,7 +23,7 @@ export function renderDynamicTable(data) {
     // If array of primitives
     if (allPrimitives) {
       return (
-        <table className="result-table">
+        <table className="result-table fade-in">
           <tbody>
             {data.map((value, idx) => (
               <tr key={idx}>
@@ -47,7 +45,7 @@ export function renderDynamicTable(data) {
       const headerKeys = Array.from(allKeys);
 
       return (
-        <table className="result-table">
+        <table className="result-table fade-in">
           <thead>
             <tr>
               {headerKeys.map((key) => (
@@ -60,7 +58,6 @@ export function renderDynamicTable(data) {
               <tr key={rowIdx}>
                 {headerKeys.map((k) => (
                   <td key={k}>
-                    {/* Recursively render if nested */}
                     {typeof obj[k] === "object" ? renderDynamicTable(obj[k]) : String(obj[k] ?? "")}
                   </td>
                 ))}
@@ -71,10 +68,9 @@ export function renderDynamicTable(data) {
       );
     }
 
-    // Mixed array or array of arrays/objects
-    // We'll just map each entry in a row, each cell is recursively rendered
+    // Mixed array or array of arrays/objects: map each entry in a row
     return (
-      <table className="result-table">
+      <table className="result-table fade-in">
         <tbody>
           {data.map((item, idx) => (
             <tr key={idx}>
@@ -90,7 +86,7 @@ export function renderDynamicTable(data) {
   // We make a 2-col table: Key | Value (recursively)
   const entries = Object.entries(data);
   return (
-    <table className="result-table">
+    <table className="result-table fade-in">
       <tbody>
         {entries.map(([key, value]) => (
           <tr key={key}>

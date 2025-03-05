@@ -1,12 +1,45 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AWS from "aws-sdk";
 import axios from "axios";
+import "./UploadPDFPage.css";
+
+// Loader component that shows progress messages one after another
+function Loader({ messages, interval = 3000 }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (currentIndex < messages.length - 1) {
+      const timer = setTimeout(() => {
+        setCurrentIndex(currentIndex + 1);
+      }, interval);
+      return () => clearTimeout(timer);
+    }
+  }, [currentIndex, messages, interval]);
+
+  return (
+    <div className="loader-container">
+      <div className="spinner"></div>
+      <p className="loader-message animated-text">{messages[currentIndex]}</p>
+    </div>
+  );
+}
+
 export default function UploadPDFPage() {
-  // State to hold the file input
+  // States for form data and messages
   const [file, setFile] = useState(null);
   const [componentType, setComponentType] = useState("");
   const [componentName, setComponentName] = useState("");
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Loader messages for each step of the process
+  const loaderMessages = [
+    "Converting PDF to images...",
+    "Performing OCR using Gemni model...",
+    "Transforming OCR content with LLM model...",
+    "Saving data to database for optimized retrieval..."
+  ];
 
   // AWS S3 configuration
   const s3 = new AWS.S3({
@@ -15,87 +48,112 @@ export default function UploadPDFPage() {
     region: process.env.REACT_APP_AWS_S3_REGION,
   });
 
-  // 1) Capture the chosen file in state
+  // Capture file selection and clear any messages
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
+    setError("");
+    setMessage("");
   };
 
-  // 2) Upload PDF directly to S3
+  // Upload PDF to S3 and notify backend
   const handleUpload = async () => {
-    setMessage(""); // Clear any prior message
+    setMessage("");
+    setError("");
 
-    // Simple validations
-    if (!file || !componentType || !componentName) {
-      alert("Please select a PDF file and provide component info");
+    if (!file || !componentType.trim() || !componentName.trim()) {
+      setError("Please select a PDF file and provide component info.");
       return;
     }
 
     try {
-        // Construct the S3 upload parameters
-        // Key: "{componentType}_{componentName}/file.pdf"
-        const uploadParams = {
-          Bucket: process.env.REACT_APP_AWS_BUCKET_NAME,
-          Key: `${componentType}_${componentName}/file.pdf`,
-          Body: file,
-          ContentType: file.type || "application/pdf",
-        };
+      setLoading(true);
+      // Build S3 upload parameters (Key: "componentType_componentName/file.pdf")
+      const uploadParams = {
+        Bucket: process.env.REACT_APP_AWS_BUCKET_NAME,
+        Key: `${componentType.trim()}_${componentName.trim()}/file.pdf`,
+        Body: file,
+        ContentType: file.type || "application/pdf",
+      };
 
-      // Start the S3 upload
+      // Upload file to S3
       const uploadResult = await s3.upload(uploadParams).promise();
-
-      /*
-       * The `uploadResult` will contain metadata about the uploaded file,
-       * such as ETag, Location (public URL), key, etc.
-       */
       console.log("uploadResult:", uploadResult);
 
-      // Optionally, you might still want to notify your backend 
-      // that a new PDF has been uploaded, so it can be processed.
-      // For example:
+      // Notify backend that a new PDF has been uploaded
       await axios.post("http://localhost:5000/process_pdf", {
-        s3Filename: uploadResult.Key
+        s3Filename: uploadResult.Key,
       });
 
       setMessage(`Success! PDF uploaded to: ${uploadResult.Location}`);
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      setMessage("Error uploading file.");
+    } catch (err) {
+      console.error("Error uploading file:", err);
+      setError("Error uploading file. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Upload PDF (Direct to S3)</h2>
-      <div style={{ margin: "10px 0" }}>
-        <label>Choose PDF: </label>
-        <input type="file" accept="application/pdf" onChange={handleFileChange} />
+    <div className="page-container">
+      <header className="page-header">
+        <h1>Document Processing Portal</h1>
+      </header>
+      <div className="upload-card">
+        <h2 className="upload-title">Upload PDF (Direct to S3)</h2>
+        {loading ? (
+          <Loader messages={loaderMessages} interval={3000} />
+        ) : (
+          <>
+            <div className="upload-form">
+              <div className="form-group">
+                <label htmlFor="pdfFile">Choose PDF:</label>
+                <input
+                  type="file"
+                  id="pdfFile"
+                  accept="application/pdf"
+                  onChange={handleFileChange}
+                />
+              </div>
+
+              <div className="form-group">
+                <input
+                  type="text"
+                  placeholder="Component Type (e.g. 'anode')"
+                  value={componentType}
+                  onChange={(e) => {
+                    setComponentType(e.target.value);
+                    setError("");
+                    setMessage("");
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
+                <input
+                  type="text"
+                  placeholder="Component Name (e.g. 'AP11345V')"
+                  value={componentName}
+                  onChange={(e) => {
+                    setComponentName(e.target.value);
+                    setError("");
+                    setMessage("");
+                  }}
+                />
+              </div>
+
+              <button className="upload-button" onClick={handleUpload}>
+                Upload & Process
+              </button>
+            </div>
+
+            {error && <div className="message error-message">{error}</div>}
+            {message && <div className="message success-message">{message}</div>}
+          </>
+        )}
       </div>
-
-      <div style={{ margin: "10px 0" }}>
-        <input
-          type="text"
-          placeholder="Component Type (e.g. 'anode')"
-          value={componentType}
-          onChange={(e) => setComponentType(e.target.value)}
-        />
-      </div>
-
-      <div style={{ margin: "10px 0" }}>
-        <input
-          type="text"
-          placeholder="Component Name (e.g. 'AP11345V')"
-          value={componentName}
-          onChange={(e) => setComponentName(e.target.value)}
-        />
-      </div>
-
-      <button onClick={handleUpload}>Upload & Process</button>
-
-      {message && (
-        <div style={{ marginTop: 20 }}>
-          <strong>Result:</strong> {message}
-        </div>
-      )}
+      <footer className="page-footer">
+        <p>&copy; 2025 Document Processing Portal</p>
+      </footer>
     </div>
   );
 }

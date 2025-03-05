@@ -1,0 +1,220 @@
+/* Overall page container styling */
+.page-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 1s ease-in;
+    position: relative;
+  }
+  
+  /* Header styling */
+  .page-header {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    padding: 20px;
+    text-align: center;
+    color: #e67e22;
+    animation: slideDown 0.8s ease-out;
+  }
+  
+  .page-header h1 {
+    margin: 0;
+    font-size: 2.5em;
+  }
+  
+  /* Upload card styling */
+  .upload-card {
+    top: 5px;
+    background: #ffffff;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    padding: 40px 50px;
+    width: 90%;
+    max-width: 600px;
+    animation: slideIn 0.8s ease-out;
+  }
+  
+  /* Upload title styling */
+  .upload-title {
+    text-align: center;
+    color: #e67e22;
+    font-size: 2.2em;
+    margin-bottom: 30px;
+    font-weight: 600;
+    animation: fadeIn 1s ease-in;
+  }
+  
+  /* Form styling */
+  .upload-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    animation: fadeIn 0.8s ease-in;
+  }
+  
+  .form-group label {
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .form-group input[type="file"] {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    transition: border-color 0.3s;
+  }
+  
+  .form-group input[type="file"]:focus {
+    outline: none;
+    border-color: #e67e22;
+  }
+  
+  .form-group input[type="text"] {
+    padding: 12px 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1em;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  
+  .form-group input[type="text"]:focus {
+    outline: none;
+    border-color: #e67e22;
+    box-shadow: 0 0 10px rgba(230, 126, 34, 0.5);
+  }
+  
+  /* Upload Button Styling */
+  .upload-button {
+    padding: 14px 30px;
+    background-color: #e67e22;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+  }
+  
+  .upload-button:hover {
+    background-color: #d35400;
+    transform: scale(1.03);
+  }
+  
+  /* Message Styling */
+  .message {
+    margin-top: 20px;
+    padding: 12px 15px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1em;
+    animation: fadeIn 0.8s ease-in;
+  }
+  
+  .error-message {
+    background-color: #fdecea;
+    color: #c0392b;
+    border: 1px solid #c0392b;
+  }
+  
+  .success-message {
+    background-color: #e9f7ef;
+    color: #27ae60;
+    border: 1px solid #27ae60;
+  }
+  
+  /* Loader Styling */
+  .loader-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 30px;
+    animation: fadeIn 1s ease-in;
+  }
+  
+  .spinner {
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #e67e22;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+  }
+  
+  .loader-message {
+    font-size: 1.2em;
+    color: #333;
+    text-align: center;
+    max-width: 500px;
+    line-height: 1.5;
+    animation: fadeIn 1s ease-in;
+  }
+  
+  /* Footer styling */
+  .page-footer {
+    position: absolute;
+    bottom: 0;
+    width: 99%;
+    padding: 10px 0;
+    text-align: center;
+    color: #fff;
+    font-size: 0.9em;
+    animation: slideUp 0.8s ease-out;
+  }
+  
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  @keyframes slideIn {
+    from { transform: translateY(50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  @keyframes slideDown {
+    from { transform: translateY(-50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  @keyframes slideUp {
+    from { transform: translateY(50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  /* Animated text styling */
+  .animated-text {
+    animation: pulse 1.5s infinite;
+  }
+  
+  @keyframes pulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .upload-card {
+      padding: 20px;
+    }
+    .page-header h1 {
+      font-size: 2em;
+    }
+  }
+  
