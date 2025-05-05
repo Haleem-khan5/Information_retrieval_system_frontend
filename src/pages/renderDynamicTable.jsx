@@ -11,13 +11,31 @@ export function renderDynamicTable(data) {
 
   // If data is a primitive (string, number, boolean, etc.)
   if (typeof data !== "object") {
+    // URL check: make links clickable
+    if (
+      typeof data === "string" &&
+      (data.startsWith("http://") || data.startsWith("https://"))
+    ) {
+      return (
+        <a
+          href={data}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="result-link"
+        >
+          {data}
+        </a>
+      );
+    }
     return <span>{String(data)}</span>;
   }
 
   // If data is an Array
   if (Array.isArray(data)) {
     // Check if array of objects or array of primitives
-    const allObjects = data.every((item) => typeof item === "object" && !Array.isArray(item));
+    const allObjects = data.every(
+      (item) => typeof item === "object" && !Array.isArray(item)
+    );
     const allPrimitives = data.every((item) => typeof item !== "object");
 
     // If array of primitives
@@ -58,7 +76,9 @@ export function renderDynamicTable(data) {
               <tr key={rowIdx}>
                 {headerKeys.map((k) => (
                   <td key={k}>
-                    {typeof obj[k] === "object" ? renderDynamicTable(obj[k]) : String(obj[k] ?? "")}
+                    {typeof obj[k] === "object"
+                      ? renderDynamicTable(obj[k])
+                      : String(obj[k] ?? "")}
                   </td>
                 ))}
               </tr>
@@ -91,7 +111,21 @@ export function renderDynamicTable(data) {
         {entries.map(([key, value]) => (
           <tr key={key}>
             <td style={{ fontWeight: "bold", width: "150px" }}>{key}</td>
-            <td>{renderDynamicTable(value)}</td>
+            <td>
+              {/* Special-case pdf_file_path for clickable link */}
+              {key === "pdf_file_path" && typeof value === "string" ? (
+                <a
+                  href={value}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="result-link"
+                >
+                  {value}
+                </a>
+              ) : (
+                renderDynamicTable(value)
+              )}
+            </td>
           </tr>
         ))}
       </tbody>
