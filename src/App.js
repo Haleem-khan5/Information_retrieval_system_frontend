@@ -20,9 +20,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* <nav className="p-4 flex space-x-4"> */}
+      <nav className="p-4 flex space-x-4">
         {/* Only show the “other” page link as a button */}
-        {/* {otherPath && (
+         {otherPath && (
           <Link
             to={otherPath}
             className="
@@ -36,7 +36,7 @@ export default function App() {
             {otherLabel}
           </Link>
         )}
-      </nav> */}
+      </nav>
 
       <Routes>
         <Route

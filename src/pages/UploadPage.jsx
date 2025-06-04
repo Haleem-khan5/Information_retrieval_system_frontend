@@ -1,156 +1,216 @@
+// UploadPDFPage.jsx – redirects after single upload
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import AWS from "aws-sdk";
 import axios from "axios";
 import "./UploadPDFPage.css";
 
-// Loader component that shows progress messages one after another
+/* ─────────────────────────────────────────────────────────────
+   Loader: cycles through status messages while work is running
+   ───────────────────────────────────────────────────────────── */
 function Loader({ messages, interval = 3000 }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [idx, setIdx] = useState(0);
 
   useEffect(() => {
-    if (currentIndex < messages.length - 1) {
-      const timer = setTimeout(() => {
-        setCurrentIndex(currentIndex + 1);
-      }, interval);
-      return () => clearTimeout(timer);
+    if (idx < messages.length - 1) {
+      const t = setTimeout(() => setIdx(idx + 1), interval);
+      return () => clearTimeout(t);
     }
-  }, [currentIndex, messages, interval]);
+  }, [idx, messages, interval]);
 
   return (
     <div className="loader-container">
-      <div className="spinner"></div>
-      <p className="loader-message animated-text">{messages[currentIndex]}</p>
+      <div className="spinner" />
+      <p className="loader-message animated-text">{messages[idx]}</p>
     </div>
   );
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Main page – always uploads as ANODE component, using the file name
+   ───────────────────────────────────────────────────────────── */
 export default function UploadPDFPage() {
-  // States for form data and messages
-  const [file, setFile] = useState(null);
-  const [componentType, setComponentType] = useState("");
-  const [componentName, setComponentName] = useState("");
+  const navigate = useNavigate(); // 🔑 for redirect
+
+  /*  form / selector state  */
+  const [file, setFile] = useState(null); // single-file mode
+  const [files, setFiles] = useState([]); // batch mode
+
+  /*  ui state  */
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Loader messages for each step of the process
-  const loaderMessages = [
-    "Converting PDF to images...",
-    "Performing OCR using Gemni model...",
-    "Transforming OCR content with LLM model...",
-    "Saving data to database for optimized retrieval..."
+  const loaderMsgs = [
+    "Converting PDF(s) to images …",
+    "Running Tesseract OCR …",
+    "Structuring OCR with Gemini LLM …",
+    "Persisting metadata in the database …",
   ];
 
-  // AWS S3 configuration
+  /*  AWS S3 config  */
   const s3 = new AWS.S3({
     accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY,
     region: process.env.REACT_APP_AWS_S3_REGION,
   });
 
-  // Capture file selection and clear any messages
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
+  /* ─────────── helpers ─────────── */
+  const resetAlerts = () => {
     setError("");
     setMessage("");
   };
 
-  // Upload PDF to S3 and notify backend
-  const handleUpload = async () => {
-    setMessage("");
-    setError("");
+  const handleSingleFileChange = (e) => {
+    setFile(e.target.files[0]);
+    resetAlerts();
+  };
+  const handleFolderChange = (e) => {
+    setFiles(Array.from(e.target.files));
+    resetAlerts();
+  };
 
-    if (!file || !componentType.trim() || !componentName.trim()) {
-      setError("Please select a PDF file and provide component info.");
+  /*  core uploader (single OR batch)  */
+  const handleUpload = async () => {
+    resetAlerts();
+
+    if (!file && files.length === 0) {
+      setError("Please choose at least one PDF to upload.");
       return;
     }
 
     try {
       setLoading(true);
-      // Build S3 upload parameters (Key: "componentType_componentName/file.pdf")
-      const uploadParams = {
-        Bucket: process.env.REACT_APP_AWS_BUCKET_NAME,
-        Key: `${componentType.trim()}_${componentName.trim()}/file.pdf`,
-        Body: file,
-        ContentType: file.type || "application/pdf",
+
+      /* =======================================================
+         1) S3  UPLOAD
+      ======================================================= */
+      const uploadFile = async (f) => {
+        const TYPE = "anode"; // fixed component type
+        const NAME = f.name.replace(/\.[^/.]+$/, ""); // file name w/out ext
+        const key = `${TYPE}_${NAME}/${f.name}`; // e.g. anode_myDoc/myDoc.pdf
+
+        const params = {
+          Bucket: process.env.REACT_APP_AWS_BUCKET_NAME,
+          Key: key,
+          Body: f,
+          ContentType: f.type || "application/pdf",
+        };
+        const { Key } = await s3.upload(params).promise();
+        return { Key, TYPE, NAME }; // return meta for redirect
       };
 
-      // Upload file to S3
-      const uploadResult = await s3.upload(uploadParams).promise();
-      console.log("uploadResult:", uploadResult);
+      /* =======================================================
+         2) SINGLE  vs  BATCH LOGIC
+      ======================================================= */
+      if (files.length > 0) {
+        /* ── batch mode ─────────────────────────────────────── */
+        const metaArr = await Promise.all(files.map(uploadFile));
+        const s3Keys = metaArr.map(({ Key }) => Key);
 
-      // Notify backend that a new PDF has been uploaded
-      await axios.post("http://localhost:5000/process_pdf", {
-        s3Filename: uploadResult.Key,
-      });
+        const res = await axios.post(
+          "http://localhost:5000/process_pdf/batch",
+          {
+            files: s3Keys.map((k) => ({ s3Filename: k })),
+          }
+        );
 
-      setMessage(`Success! PDF uploaded to: ${uploadResult.Location}`);
+        const list = res.data?.pdf_filenames || [];
+        setMessage(
+          `Batch complete – ${list.length} file(s) processed successfully.`
+        );
+
+        // If at least one processed successfully, jump to search page
+        if (list.length > 0) {
+          navigate(
+            `/search-by-filename?file=${encodeURIComponent(list[0])}`
+          );
+        }
+      } else {
+        /* ── single-file mode ──────────────────────────────── */
+        const { Key } = await uploadFile(file);
+
+        const res = await axios.post("http://localhost:5000/process_pdf", {
+          s3Filename: Key,
+        });
+
+        // Prefer the value returned by the API because that’s what DB stored
+        const savedFilename =
+          res.data?.pdf_filename?.trim() || Key;
+
+        navigate(
+          `/search-by-filename?file=${encodeURIComponent(savedFilename)}`
+        );
+      }
     } catch (err) {
-      console.error("Error uploading file:", err);
-      setError("Error uploading file. Please try again.");
+      console.error(err);
+      setError("Upload failed – please check console / network tab.");
     } finally {
       setLoading(false);
     }
   };
 
+  /* ─────────── ui ─────────── */
   return (
     <div className="page-container">
       <header className="page-header">
         <h1>Document Processing Portal</h1>
       </header>
+
       <div className="upload-card">
-        <h2 className="upload-title">Upload PDF (Direct to S3)</h2>
+        <h2 className="upload-title">Upload PDF → S3</h2>
+
         {loading ? (
-          <Loader messages={loaderMessages} interval={3000} />
+          <Loader messages={loaderMsgs} />
         ) : (
           <>
             <div className="upload-form">
+              {/* single-file selector */}
               <div className="form-group">
-                <label htmlFor="pdfFile">Choose PDF:</label>
+                <label htmlFor="singleFile">Choose single PDF:</label>
                 <input
                   type="file"
-                  id="pdfFile"
+                  id="singleFile"
                   accept="application/pdf"
-                  onChange={handleFileChange}
+                  onChange={handleSingleFileChange}
                 />
               </div>
 
+              {/* folder / batch selector */}
               <div className="form-group">
+                <label htmlFor="folderInput">
+                  Or choose a folder (batch upload):
+                </label>
                 <input
-                  type="text"
-                  placeholder="Component Type (e.g. 'anode')"
-                  value={componentType}
-                  onChange={(e) => {
-                    setComponentType(e.target.value);
-                    setError("");
-                    setMessage("");
-                  }}
+                  type="file"
+                  id="folderInput"
+                  accept="application/pdf"
+                  webkitdirectory="true"
+                  mozdirectory="true"
+                  directory="true"
+                  multiple
+                  onChange={handleFolderChange}
                 />
-              </div>
-
-              <div className="form-group">
-                <input
-                  type="text"
-                  placeholder="Component Name (e.g. 'AP11345V')"
-                  value={componentName}
-                  onChange={(e) => {
-                    setComponentName(e.target.value);
-                    setError("");
-                    setMessage("");
-                  }}
-                />
+                {files.length > 0 && (
+                  <small>{files.length} file(s) selected</small>
+                )}
               </div>
 
               <button className="upload-button" onClick={handleUpload}>
-                Upload & Process
+                {files.length > 0
+                  ? "Batch Upload & Process"
+                  : "Upload & Process"}
               </button>
             </div>
 
             {error && <div className="message error-message">{error}</div>}
-            {message && <div className="message success-message">{message}</div>}
+            {message && (
+              <div className="message success-message">{message}</div>
+            )}
           </>
         )}
       </div>
+
       <footer className="page-footer">
         <p>&copy; 2025 Document Processing Portal</p>
       </footer>
