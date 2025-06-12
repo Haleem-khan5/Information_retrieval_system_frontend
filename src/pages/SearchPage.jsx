@@ -2,9 +2,10 @@ import React, { useState } from "react";
 import axios from "axios";
 import "./SearchPage.css";
 import { renderDynamicTable } from "./renderDynamicTable";
+import { SERVER_LINK } from "../config";
 
-// Read the base API URL from environment variables
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+// Use the server link from config
+const API_BASE_URL = SERVER_LINK;
 
 export default function SearchPage() {
   const [componentType, setComponentType] = useState("");

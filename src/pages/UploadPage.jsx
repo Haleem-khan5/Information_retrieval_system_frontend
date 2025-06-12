@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import AWS from "aws-sdk";
 import axios from "axios";
 import "./UploadPDFPage.css";
+import { SERVER_LINK, AWS_CONFIG } from "../config";
 
 /* ─────────────────────────────────────────────────────────────
    Loader: cycles through status messages while work is running
@@ -50,9 +51,9 @@ export default function UploadPDFPage() {
 
   /*  AWS S3 config  */
   const s3 = new AWS.S3({
-    accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY,
-    region: process.env.REACT_APP_AWS_S3_REGION,
+    accessKeyId: AWS_CONFIG.accessKeyId,
+    secretAccessKey: AWS_CONFIG.secretAccessKey,
+    region: AWS_CONFIG.region,
   });
 
   /* ─────────── helpers ─────────── */
@@ -91,7 +92,7 @@ export default function UploadPDFPage() {
         const key = `${TYPE}_${NAME}/${f.name}`; // e.g. anode_myDoc/myDoc.pdf
 
         const params = {
-          Bucket: process.env.REACT_APP_AWS_BUCKET_NAME,
+          Bucket: AWS_CONFIG.bucket,
           Key: key,
           Body: f,
           ContentType: f.type || "application/pdf",
@@ -109,7 +110,7 @@ export default function UploadPDFPage() {
         const s3Keys = metaArr.map(({ Key }) => Key);
 
         const res = await axios.post(
-          "http://localhost:5000/process_pdf/batch",
+          `${SERVER_LINK}/process_pdf/batch`,
           {
             files: s3Keys.map((k) => ({ s3Filename: k })),
           }
@@ -130,11 +131,11 @@ export default function UploadPDFPage() {
         /* ── single-file mode ──────────────────────────────── */
         const { Key } = await uploadFile(file);
 
-        const res = await axios.post("http://localhost:5000/process_pdf", {
+        const res = await axios.post(`${SERVER_LINK}/process_pdf`, {
           s3Filename: Key,
         });
 
-        // Prefer the value returned by the API because that’s what DB stored
+        // Prefer the value returned by the API because that's what DB stored
         const savedFilename =
           res.data?.pdf_filename?.trim() || Key;
 

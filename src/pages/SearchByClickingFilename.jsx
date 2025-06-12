@@ -4,8 +4,9 @@ import axios from "axios";
 import { useSearchParams } from "react-router-dom";
 import "./SearchPage.css";
 import { renderDynamicTable } from "./renderDynamicTable";
+import { SERVER_LINK } from "../config";
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+const API_BASE_URL = SERVER_LINK;
 
 export default function SearchByClickingFilename() {
   /* ─────────── state ─────────── */
