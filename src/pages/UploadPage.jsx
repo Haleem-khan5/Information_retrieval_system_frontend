@@ -54,6 +54,7 @@ export default function UploadPDFPage() {
     accessKeyId: AWS_CONFIG.accessKeyId,
     secretAccessKey: AWS_CONFIG.secretAccessKey,
     region: AWS_CONFIG.region,
+    bucket: AWS_CONFIG.bucket,
   });
 
   /* ─────────── helpers ─────────── */
