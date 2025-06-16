@@ -45,7 +45,7 @@ export default function UploadPDFPage() {
   const loaderMsgs = [
     "Converting PDF(s) to images …",
     "Running Tesseract OCR …",
-    "Structuring OCR with Gemini LLM …",
+    "Structuring OCR extracted data to structured data with LLM …",
     "Persisting metadata in the database …",
   ];
 
